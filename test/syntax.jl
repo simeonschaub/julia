@@ -1889,3 +1889,13 @@ x32499 = begin
     S32499(x=2)
 end
 @test x32499 == 2
+
+# Non-standard identifiers (PR #32408)
+@test Meta.parse("var\"#\"") == Symbol("#")
+@test_throws ParseError Meta.parse("var\"#\"x") # Reject string macro-like suffix
+@test_throws ParseError Meta.parse("var \"#\"")
+# A few cases which would be ugly to deal with if var"#" were a string macro:
+@test Meta.parse("var\"#\".var\"a-b\"") == Expr(:., Symbol("#"), QuoteNode(Symbol("a-b")))
+@test Meta.parse("export var\"#\"") == Expr(:export, Symbol("#"))
+@test Base.remove_linenums!(Meta.parse("try a catch var\"#\" b end")) ==
+      Expr(:try, Expr(:block, :a), Symbol("#"), Expr(:block, :b))

@@ -251,6 +251,7 @@ Base.@nospecialize
 Base.@specialize
 Base.gensym
 Base.@gensym
+var
 Base.@goto
 Base.@label
 Base.@simd
