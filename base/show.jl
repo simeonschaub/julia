@@ -1126,9 +1126,7 @@ function show_unquoted_quote_expr(io::IO, @nospecialize(value), indent::Int, pre
             show_block(IOContext(io, beginsym=>false), "quote", value, indent, quote_level)
             print(io, "end")
         else
-            print(io, ":(")
-            show_unquoted(io, value, indent+2, -1, quote_level)  # +2 for `:(`
-            print(io, ")")
+            show_unquoted(io, value, indent, -1, quote_level, true)
         end
     end
 end
@@ -1202,26 +1200,46 @@ end
 # as an ordinary symbol, which is true in indexing expressions.
 const beginsym = gensym(:beginsym)
 
-function show_unquoted_expr_fallback(io::IO, ex::Expr, indent::Int, quote_level::Int)
-    print(io, "\$(Expr(")
+function show_unquoted_expr_fallback(
+    io::IO,
+    ex::Expr,
+    indent::Int,
+    quote_level::Int = 0,
+    quote_expr = false
+)
+    quote_expr || print(io, "\$(")
+    print(io, "Expr(")
     show(io, ex.head)
     for arg in ex.args
         print(io, ", ")
         if isa(arg, Expr)
-            print(io, ":(")
-            show_unquoted(io, arg, indent, 0, quote_level+1)
-            print(io, ")")
+            show_unquoted(io, arg, indent, 0, quote_level+1, true)
         else
             show(io, arg)
         end
     end
-    print(io, "))")
+    print(io, ")")
+    quote_expr || print(io, ")")
 end
 
 # TODO: implement interpolated strings
-function show_unquoted(io::IO, ex::Expr, indent::Int, prec::Int, quote_level::Int = 0)
+function show_unquoted(
+    io::IO,
+    ex::Expr,
+    indent::Int,
+    prec::Int,
+    quote_level::Int = 0,
+    quote_expr = false
+)
     head, args, nargs = ex.head, ex.args, length(ex.args)
     unhandled = false
+    _io = io
+    io = IOHook(_io) do io
+        quote_expr || return
+        print(io, ":(")
+        indent += 2
+        quote_expr = false
+    end
     # dot (i.e. "x.y"), but not compact broadcast exps
     if head === :(.) && (nargs != 2 || !is_expr(args[2], :tuple))
         if nargs == 2 && is_quoted(args[2])
@@ -1708,7 +1726,10 @@ function show_unquoted(io::IO, ex::Expr, indent::Int, prec::Int, quote_level::In
         unhandled = true
     end
     if unhandled
-        show_unquoted_expr_fallback(io, ex, indent, quote_level)
+        show_unquoted_expr_fallback(_io, ex, indent, quote_level, quote_expr)
+    else
+        #@assert !quote_expr
+        print(_io, ')')
     end
     nothing
 end

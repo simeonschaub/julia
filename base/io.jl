@@ -1107,3 +1107,18 @@ function countlines(io::IO; eol::AbstractChar='\n')
 end
 
 countlines(f::AbstractString; eol::AbstractChar = '\n') = open(io->countlines(io, eol = eol), f)::Int
+
+struct IOHook{T<:IO,F} <: IO
+    f::F
+    io::T
+end
+
+function unsafe_write(io::IOHook, p::Ptr{UInt8}, n::UInt)
+    io.f(io.io)
+    return unsafe_write(io.io, p, n)
+end
+
+function write(io::IOHook, x::UInt8)
+    io.f(io.io)
+    return write(io.io, x)
+end
