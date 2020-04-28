@@ -1198,14 +1198,18 @@
                    (list 'call ex al)
                    (if (null? al)
                        (loop (list 'ref ex))
-                       (case (car al)
-                         ((vect)  (loop (list* 'ref ex (map =-to-kw (cdr al)))))
-                         ((hcat)  (loop (list* 'typed_hcat ex (cdr al))))
-                         ((vcat)
-                          (loop (list* 'typed_vcat ex (cdr al))))
-                         ((comprehension)
-                          (loop (list* 'typed_comprehension ex (cdr al))))
-                         (else (error "unknown parse-cat result (internal error)")))))))
+                       (begin
+                         (define (handle-cat al)
+                           (case (car al)
+                             ((vect)  (loop (list* 'ref ex (map =-to-kw (cdr al)))))
+                             ((hcat)  (loop (list* 'typed_hcat ex (cdr al))))
+                             ((vcat)
+                              (loop (list* 'typed_vcat ex (cdr al))))
+                             ((comprehension)
+                              (loop (list* 'typed_comprehension ex (cdr al))))
+                             ((leading_semi) `(leading_semi ,(handle-cat (cadr al))))
+                             (else (error "unknown parse-cat result (internal error)"))))
+                         (handle-cat al))))))
             ((|.|)
              (disallow-space s ex t)
              (take-token s)
@@ -1398,7 +1402,7 @@
                  (error "use \"elseif\" instead of \"else if\""))
              (begin0 (list word test then (parse-block s))
                      (expect-end s 'if)))
-            (else      (error (string "unexpected \"" nxt "\""))))))
+            (else      (error (string "1unexpected \"" nxt "\""))))))
 
        ((global local)
         (let* ((const (and (eq? (peek-token s) 'const)
@@ -1519,7 +1523,7 @@
                       catchb
                       catchv
                       fb)))
-             (else    (error (string "unexpected \"" nxt "\"")))))))
+             (else    (error (string "2unexpected \"" nxt "\"")))))))
        ((return)          (let ((t (peek-token s)))
                             (if (or (eqv? t #\newline) (closing-token? t))
                                 (list 'return '(null))
@@ -1530,7 +1534,7 @@
                   (and (eq? t 'end) (not end-symbol))
                   (memv t '(#\newline #\; #\) :)))
               (list word)
-              (error (string "unexpected \"" t "\" after " word)))))
+              (error (string "3unexpected \"" t "\" after " word)))))
 
        ((module baremodule)
         (let* ((name (parse-unary-prefix s))
@@ -1747,7 +1751,7 @@
                       #;((eqv? c #\newline)
                       (error "unexpected line break in argument list"))
                       ((or (eqv? c #\]) (eqv? c #\}))
-                       (error (string "unexpected \"" c "\" in argument list")))
+                       (error (string "4unexpected \"" c "\" in argument list")))
                       (else
                        (error (string "missing comma or " closer
                                       " in argument list")))))))))))
@@ -1778,7 +1782,7 @@
                  (let ((params (parse-call-arglist s closer)))
                    `(vect ,@params ,@(reverse lst) ,nxt))))
             ((#\] #\})
-             (error (string "unexpected \"" t "\"")))
+             (error (string "5unexpected \"" t "\"")))
             (else
              (error "missing separator in array expression")))))))
 
@@ -1830,9 +1834,9 @@
              (set! gotnewline #f)
              (loop '() (update-outer vec outer)))
             ((#\,)
-             (error "unexpected comma in matrix expression"))
+             (error "6unexpected comma in matrix expression"))
             ((#\] #\})
-             (error (string "unexpected \"" t "\"")))
+             (error (string "7unexpected \"" t "\"")))
             ((for)
              (if (and (not semicolon)
                       (length= outer 1)
@@ -1860,24 +1864,30 @@
                   (where-enabled #t)
                   (whitespace-newline #f)
                   (for-generator #t))
-    (if (eqv? (require-token s) closer)
-        (begin (take-token s)
-               '())
-        (let* ((first (parse-eq* s))
-               (t (peek-token s)))
-          (cond ((or (eqv? t #\,) (eqv? t closer))
-                 (parse-vect s first closer))
-                ((eq? t 'for)
-                 (expect-space-before s 'for)
-                 (take-token s)
-                 (parse-comprehension s first closer))
-                ((eqv? t #\newline)
-                 (take-token s)
-                 (if (memv (peek-token s) (list #\, closer))
-                     (parse-vect s first closer)
-                     (parse-matrix s first closer #t last-end-symbol)))
-                (else
-                 (parse-matrix s first closer #f last-end-symbol)))))))
+    (define (_parse-cat)
+      (if (eqv? (require-token s) closer)
+          (begin (take-token s)
+                 '())
+          (let* ((first (parse-eq* s))
+                 (t (peek-token s)))
+            (cond ((or (eqv? t #\,) (eqv? t closer))
+                   (parse-vect s first closer))
+                  ((eq? t 'for)
+                   (expect-space-before s 'for)
+                   (take-token s)
+                   (parse-comprehension s first closer))
+                  ((eqv? t #\newline)
+                   (take-token s)
+                   (if (memv (peek-token s) (list #\, closer))
+                       (parse-vect s first closer)
+                       (parse-matrix s first closer #t last-end-symbol)))
+                  (else
+                   (parse-matrix s first closer #f last-end-symbol)))))))
+    (if (eqv? (peek-token s) #\;)
+      (begin
+        (take-token s)
+        `(leading_semi ,(_parse-cat)))
+      (_parse-cat)))
 
 (define (kw-to-= e) (if (kwarg? e) (cons '= (cdr e)) e))
 (define (=-to-kw e) (if (assignment? e) (cons 'kw (cdr e)) e))
@@ -2297,14 +2307,14 @@
                                           (parse-atom s #f))))))))
 
           ;; misplaced =
-          ((eq? t '=) (error "unexpected \"=\""))
+          ((eq? t '=) (error "8unexpected \"=\""))
 
           ;; identifier
           ((symbol? t)
            (if checked
                (begin (check-identifier t)
                       (if (closing-token? t)
-                          (error (string "unexpected \"" (take-token s) "\"")))))
+                          (error (string "9unexpected \"" (take-token s) "\"")))))
            (take-token s)
            (cond ((and (eq? t 'var)
                        (if (or (ts:pbtok s) (ts:last-tok s))
@@ -2331,9 +2341,17 @@
 
           ;; cat expression
           ((eqv? t #\[ )
+           (display "bla")
            (take-token s)
-           (let ((vex (parse-cat s #\] end-symbol)))
-             (if (null? vex) '(vect) vex)))
+           (define (_parse-cat)
+             (let ((vex (parse-cat s #\] end-symbol)))
+               (if (null? vex) '(vect) vex)))
+           ;;(if (eqv? (peek-token s) #\;)
+           ;;  (begin
+           ;;    (take-token s)
+           ;;    `(leading-semi ,(_parse-cat)))
+           ;;  (_parse-cat)))
+           (_parse-cat))
 
           ((eqv? t #\{ )
            (take-token s)
@@ -2385,7 +2403,7 @@
 
           ((or (string? t) (number? t) (large-number? t)) (take-token s))
 
-          ((closing-token? t) (error (string "unexpected \"" (take-token s) "\"")))
+          ((closing-token? t) (error (string "10unexpected \"" (take-token s) "\"")))
 
           (else (error (string "invalid syntax: \"" (take-token s) "\""))))))
 
