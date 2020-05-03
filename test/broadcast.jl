@@ -946,4 +946,5 @@ p0 = copy(p)
 @test p[1:2, :] ≈ p0[1:2, :] + r
 
 @test identity(.+) == Broadcast.BroadcastOp(+)
+@test identity.(.*) == Broadcast.BroadcastOp(*)
 @test map(.+, [[1,2], [3,4]], [5, 6]) == [[6,7], [9,10]]
