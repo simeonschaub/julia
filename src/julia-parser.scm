@@ -2389,6 +2389,8 @@
            (take-token s)
            `(macrocall (core @cmd) ,(line-number-node s) ,(parse-raw-literal s #\`)))
 
+          ((dotop-named? t) (error t))
+
           ((or (string? t) (number? t) (large-number? t)) (take-token s))
 
           ((closing-token? t) (error (string "unexpected \"" (take-token s) "\"")))
