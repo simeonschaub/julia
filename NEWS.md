@@ -14,7 +14,7 @@ New language features
   global variables and function calls. The expression will be evaluated the first
   time the `ccall` executes ([#36458]).
 
-* Standalone "dotted" operators now get lowered to `Base.BroadcastOp(op)` and can be passed to
+* Standalone "dotted" operators now get lowered to `Base.BroadcastFunction(op)` and can be passed to
   higher-order functions, i.e. `.op` is functionally equivalent to `(x...) -> (op).(x...)`.
   ([#35706])
 
