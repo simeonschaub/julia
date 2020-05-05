@@ -949,3 +949,4 @@ p0 = copy(p)
 @test identity.(.*) == Broadcast.BroadcastOp(*)
 @test map(.+, [[1,2], [3,4]], [5, 6]) == [[6,7], [9,10]]
 @test repr(.!) == "Base.Broadcast.BroadcastOp(!)"
+@test eval(:.+) == Base.BroadcastOp(+)
