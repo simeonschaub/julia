@@ -116,6 +116,25 @@ iterate_and_index(x) = (destruct_iterate, select_first)
 # to make inference's life easier.
 iterate_and_index(::Nothing) = throw(MethodError(iterate, (nothing,)))
 
+function _rest(itr, state, _)
+    @_inline_meta
+    state === () && return rest(itr)
+    return rest(itr, state[1][2])
+end
+_rest(x::Union{Array,Tuple,NamedTuple,Pair}, _, i) = (@_inline_meta; rest(x, i))
+
+rest(t::Tuple) = t
+rest(t::NTuple{N}, i::Int) where {N} = ntuple(x -> getfield(t, x+i-1), N-i+1)
+rest(a::Array, i::Int=1) = a[i:end]
+# The semantics of `collect` are weird. Better to write our own
+function rest(a::AbstractArray{T}, state...) where {T}
+    v = Vector{T}(undef, 0)
+    # assume only very few items are taken from the front
+    sizehint!(v, length(a))
+    return foldl(push!, Iterators.rest(a, state...), init=v)
+end
+rest(itr, state...) = Iterators.rest(itr, state...)
+
 # Use dispatch to avoid a branch in first
 first(::Tuple{}) = throw(ArgumentError("tuple must be non-empty"))
 first(t::Tuple) = t[1]
