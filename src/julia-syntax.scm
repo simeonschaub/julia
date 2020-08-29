@@ -1434,6 +1434,15 @@
                        (cons (make-assignment L R) stmts)
                        after
                        (cons R elts)))
+                ((vararg? L)
+                 (if (null? (cdr lhss))
+                     (let ((temp (make-ssavalue)))
+                       `(block ,@(reverse stmts)
+                               (= ,temp (tuple ,@rhss))
+                               ,@(reverse after)
+                               (= ,(cadr L) ,temp)
+                               (unnecessary (tuple ,@(reverse elts) (... ,temp)))))
+                     (error "foo")))
                 ((vararg? R)
                  (let ((temp (make-ssavalue)))
                    `(block ,@(reverse stmts)
@@ -2028,6 +2037,8 @@
                 ,.(if (eq? rr rhs) '() (list (sink-assignment rr (expand-forms rhs))))
                 (call (top setproperty!) ,aa ,bb ,rr)
                 (unnecessary ,rr)))))
+         ((|...|)
+          (expand-forms `(= (tuple ,lhs) ,(caddr e))))
          ((tuple)
           ;; multiple assignment
           (let ((lhss (cdr lhs))
@@ -2035,6 +2046,7 @@
             (define (sides-match? l r)
               ;; l and r either have equal lengths, or r has a trailing ...
               (cond ((null? l)          (null? r))
+                    ((vararg? (car l))  #t)
                     ((null? r)          #f)
                     ((vararg? (car r))  (null? (cdr r)))
                     (else               (sides-match? (cdr l) (cdr r)))))
@@ -2044,34 +2056,51 @@
                 (expand-forms
                  (tuple-to-assignments lhss x))
                 ;; (a, b, ...) = other
-                (let* ((xx  (if (or (and (symbol? x) (not (memq x lhss)))
-                                    (ssavalue? x))
-                                x (make-ssavalue)))
-                       (ini (if (eq? x xx) '() (list (sink-assignment xx (expand-forms x)))))
-                       (n   (length lhss))
-                       (funcs (make-ssavalue))
-                       (iterate (make-ssavalue))
-                       (index (make-ssavalue))
-                       (st  (gensy)))
-                  `(block
-                    ,@ini
-                    ,(lower-tuple-assignment
-                      (list iterate index)
-                      `(call (top iterate_and_index) ,xx))
-                    ,.(map (lambda (i lhs)
-                            (expand-forms
-                              `(block
-                                (= ,st (call ,iterate
-                                    ,xx ,.(if (eq? i 0) '() `(,st))))
-                               ,(if (eventually-call? lhs)
-                                  (let ((val (gensy)))
-                                    `(block
-                                      (= ,val (call ,index ,st ,(+ i 1)))
-                                      (= ,lhs ,val)))
-                                  `(= ,lhs (call ,index ,st ,(+ i 1)))))))
-                           (iota n)
-                           lhss)
-                    (unnecessary ,xx))))))
+                (begin
+                  ;; like memq, but if last element of lhss is (... sym), check against sym instead
+                  (define (in-lhs? x lhss)
+                    (if (null? lhss)
+                        #f
+                        (let ((l (car lhss)))
+                          (cond ((and (pair? l) (eq? (car l) '|...|))
+                                 (if (null? (cdr lhss))
+                                     (eq? (cadr l) x)
+                                     (error "foo")))
+                                ((eq? l x) #t)
+                                (else (in-lhs? x (cdr lhss)))))))
+                  (let* ((xx  (if (or (and (symbol? x) (not (in-lhs? x lhss)))
+                                      (ssavalue? x))
+                                  x (make-ssavalue)))
+                         (ini (if (eq? x xx) '() (list (sink-assignment xx (expand-forms x)))))
+                         (n   (length lhss))
+                         (funcs (make-ssavalue))
+                         (iterate (make-ssavalue))
+                         (index (make-ssavalue))
+                         (st  (gensy)))
+                    `(block
+                      ,@ini
+                      ,(lower-tuple-assignment
+                        (list iterate index)
+                        `(call (top index_and_iterate) ,xx))
+                      ,.(map (lambda (i lhs)
+                              (let* ((assign-indexed-or-rest
+                                       (if (and (pair? lhs) (eq? (car lhs) '|...|))
+                                         `(= ,(cadr lhs) (call (top slurp_rest) ,xx ,st ,(+ i 1)))
+                                         `(= ,lhs (call ,index ,st ,(+ i 1)))))
+                                     (lhs (cadr assign-indexed-or-rest)))
+                                (expand-forms
+                                 `(block
+                                   (= ,st (call ,iterate
+                                       ,xx ,.(if (eq? i 0) '() `(,st))))
+                                  ,(if (eventually-call? lhs)
+                                     (let ((val (gensy)))
+                                       `(block
+                                         (= ,val ,(caddr assign-indexed-or-rest))
+                                         (= ,lhs ,val)))
+                                     assign-indexed-or-rest)))))
+                             (iota n)
+                             lhss)
+                      (unnecessary ,xx)))))))
          ((typed_hcat)
           (error "invalid spacing in left side of indexed assignment"))
          ((typed_vcat)
