@@ -1443,7 +1443,8 @@
                                ,@(reverse after)
                                (= ,(cadr L) ,temp)
                                (unnecessary (tuple ,@(reverse elts) (... ,temp)))))
-                     (error "foo")))
+                     (error (string "invalid \"...\" on non-final assignment location \""
+                                    (cadr L) "\""))))
                 ((vararg? R)
                  (let ((temp (make-ssavalue)))
                    `(block ,@(reverse stmts)
@@ -2056,7 +2057,8 @@
                  (tuple-to-assignments lhss x))
                 ;; (a, b, ...) = other
                 (begin
-                  ;; like memq, but if last element of lhss is (... sym), check against sym instead
+                  ;; like memq, but if last element of lhss is (... sym),
+                  ;; check against sym instead
                   (define (in-lhs? x lhss)
                     (if (null? lhss)
                         #f
@@ -2064,7 +2066,8 @@
                           (cond ((and (pair? l) (eq? (car l) '|...|))
                                  (if (null? (cdr lhss))
                                      (eq? (cadr l) x)
-                                     (error "foo")))
+                                     (error (string "invalid \"...\" on non-final assignment location \""
+                                                    (cadr l) "\""))))
                                 ((eq? l x) #t)
                                 (else (in-lhs? x (cdr lhss)))))))
                   (let* ((xx  (if (or (and (not (in-lhs? x lhss)) (symbol? x))

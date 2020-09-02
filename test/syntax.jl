@@ -2351,5 +2351,10 @@ end
 
     @test_throws BoundsError begin x, y, z... = 1:1 end
     @test_throws BoundsError begin x, y, _, z... = 1, 2 end
+
+    car((a, d...)) = a
+    cdr((a, d...)) = d
+    @test car(1:3) == 1
+    @test cdr(1:3) == (2, 3)
 end
 
