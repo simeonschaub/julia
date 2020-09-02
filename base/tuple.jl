@@ -119,7 +119,7 @@ iterate_and_index(::Nothing) = throw(MethodError(iterate, (nothing,)))
 #slurp_rest(itr, _, i) = Tuple(Iterators.drop(itr, i - 1))
 slurp_rest(t::NTuple{N}, _, i) where {N} = ntuple(x -> getfield(t, x+i-1), N-i+1)
 slurp_rest(a::Array, _, i) = i > length(a) ? () : _slurp_rest(a, (a, i), i)
-slurp_rest(itr, nxt, i) = nxt isa BadSlurp ? () : _slurp_rest(itr, nxt, i)
+slurp_rest(itr, nxt, i) = nxt isa BadDestructure ? () : _slurp_rest(itr, nxt, i)
 function _slurp_rest(itr, nxt, i)
     @_inline_meta
     t = ()

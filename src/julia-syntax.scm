@@ -1422,7 +1422,8 @@
                 ,@(reverse after)
                 (unnecessary (tuple ,@(reverse elts))))
         (let ((L (car lhss))
-              (R (car rhss)))
+              ;; rhss can be null iff L is a vararg
+              (R (if (null? rhss) '() (car rhss))))
           (cond ((and (symbol-like? L)
                       (or (not (pair? R)) (quoted? R) (equal? R '(null)))
                       ;; overwrite var immediately if it doesn't occur elsewhere
@@ -2037,8 +2038,6 @@
                 ,.(if (eq? rr rhs) '() (list (sink-assignment rr (expand-forms rhs))))
                 (call (top setproperty!) ,aa ,bb ,rr)
                 (unnecessary ,rr)))))
-         ((|...|)
-          (expand-forms `(= (tuple ,lhs) ,(caddr e))))
          ((tuple)
           ;; multiple assignment
           (let ((lhss (cdr lhs))
@@ -2081,12 +2080,12 @@
                       ,@ini
                       ,(lower-tuple-assignment
                         (list iterate index)
-                        `(call (top index_and_iterate) ,xx))
+                        `(call (top iterate_and_index) ,xx))
                       ,.(map (lambda (i lhs)
                               (let* ((assign-indexed-or-rest
                                        (if (and (pair? lhs) (eq? (car lhs) '|...|))
-                                         `(= ,(cadr lhs) (call (top slurp_rest) ,xx ,st ,(+ i 1)))
-                                         `(= ,lhs (call ,index ,st ,(+ i 1)))))
+                                          `(= ,(cadr lhs) (call (top slurp_rest) ,xx ,st ,(+ i 1)))
+                                          `(= ,lhs (call ,index ,st ,(+ i 1)))))
                                      (lhs (cadr assign-indexed-or-rest)))
                                 (expand-forms
                                  `(block

@@ -2306,3 +2306,47 @@ end
 @test_throws ParseError("invalid operator \".<---\"") Meta.parse("1 .<--- 2")
 @test_throws ParseError("invalid operator \"--\"") Meta.parse("a---b")
 @test_throws ParseError("invalid operator \".--\"") Meta.parse("a.---b")
+
+@testset "slurp in assignments" begin
+    res = begin x, y, z... = 1:7 end
+    @test res == 1:7
+    @test x == 1 && y == 2
+    @test z == Tuple(3:7)
+
+    res = begin x, y, z... = [1, 2] end
+    @test res == [1, 2]
+    @test x == 1 && y == 2
+    @test z == ()
+
+    x = 1
+    res = begin x..., = x end
+    @test res == 1
+    @test x == (1,)
+
+    x, y, z... = 1:7
+    res = begin y, z, x... = z..., x, y end
+    @test res == ((3:7)..., 1, 2)
+    @test y == 3
+    @test z == 4
+    @test x == ((5:7)..., 1, 2)
+
+    res = begin x, _, y... = 1, 2 end
+    @test res == (1, 2)
+    @test x == 1
+    @test y == ()
+
+    res = begin x, y... = 1 end
+    @test res == 1
+    @test x == 1
+    @test y == ()
+
+    res = begin x, y, z... = 1, 2, 3:5 end
+    @test res == (1, 2, 3:5)
+    @test x == 1 && y == 2
+    @test z == (3:5,)
+
+    @test Meta.isexpr(Meta.@lower(begin a, b..., c = 1:3 end), :error)
+    @test Meta.isexpr(Meta.@lower(begin a, b..., c = 1, 2, 3 end), :error)
+    @test Meta.isexpr(Meta.@lower(begin a, b..., c... = 1, 2, 3 end), :error)
+end
+
