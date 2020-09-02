@@ -2348,5 +2348,8 @@ end
     @test Meta.isexpr(Meta.@lower(begin a, b..., c = 1:3 end), :error)
     @test Meta.isexpr(Meta.@lower(begin a, b..., c = 1, 2, 3 end), :error)
     @test Meta.isexpr(Meta.@lower(begin a, b..., c... = 1, 2, 3 end), :error)
+
+    @test_throws BoundsError begin x, y, z... = 1:1 end
+    @test_throws BoundsError begin x, y, _, z... = 1, 2 end
 end
 

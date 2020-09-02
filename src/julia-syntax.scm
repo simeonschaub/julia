@@ -2067,7 +2067,7 @@
                                      (error "foo")))
                                 ((eq? l x) #t)
                                 (else (in-lhs? x (cdr lhss)))))))
-                  (let* ((xx  (if (or (and (symbol? x) (not (in-lhs? x lhss)))
+                  (let* ((xx  (if (or (and (not (in-lhs? x lhss)) (symbol? x))
                                       (ssavalue? x))
                                   x (make-ssavalue)))
                          (ini (if (eq? x xx) '() (list (sink-assignment xx (expand-forms x)))))
