@@ -1923,19 +1923,13 @@
       `(= ,lhs ,rhs)))
 
 (define (expand-forms e)
-  (cond
-    ;; if atom is a dotted operator .op, lower to BroadcastFunction(op)
-    ((atom? e)
-      (if (dotop-named? e)
-        `(call (top BroadcastFunction) ,(undotop e))
-        e))
-    ((memq (car e) '(quote inert top core globalref outerref module toplevel ssavalue null true false meta using import export thismodule toplevel-only))
-      e)
-    (else (let ((ex (get expand-table (car e) #f)))
+  (if (or (atom? e) (memq (car e) '(quote inert top core globalref outerref module toplevel ssavalue null true false meta using import export thismodule toplevel-only)))
+      e
+      (let ((ex (get expand-table (car e) #f)))
         (if ex
             (ex e)
             (cons (car e)
-                  (map expand-forms (cdr e))))))))
+                  (map expand-forms (cdr e)))))))
 
 ;; table mapping expression head to a function expanding that form
 (define expand-table

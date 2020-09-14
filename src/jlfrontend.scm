@@ -122,7 +122,7 @@
 (define *in-expand* #f)
 
 (define (expand-toplevel-expr e file line)
-  (cond ((or (and (atom? e) (not (dotop-named? e))) (toplevel-only-expr? e))
+  (cond ((or (atom? e) (toplevel-only-expr? e))
          (if (underscore-symbol? e)
              (error "all-underscore identifier used as rvalue"))
          e)
