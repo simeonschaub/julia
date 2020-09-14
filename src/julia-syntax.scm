@@ -1960,7 +1960,9 @@
 
    '|.|
    (lambda (e) ; e = (|.| f x)
-     (expand-fuse-broadcast '() e))
+     (if (length= e 2)
+         `(call (top BroadcastFunction) ,(cadr e))
+         (expand-fuse-broadcast '() e)))
 
    '.=
    (lambda (e)

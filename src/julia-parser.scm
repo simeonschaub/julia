@@ -1046,7 +1046,7 @@
   (let ((next (peek-token s)))
     (cond ((or (closing-token? next) (newline? next) (eq? next '=))
            (if (dotop? op)
-               (list '. (undotop op))
+               (list '|.| (undotop op))
                op))  ; return operator by itself, as in (+)
           ((or (eqv? next #\{)  ;; this case is +{T}(x::T) = ...
                (and (not un) (eqv? next #\( )))
