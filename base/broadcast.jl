@@ -1291,7 +1291,7 @@ struct BroadcastFunction{F} <: Function
     f::F
 end
 
-@inline (op::BroadcastFunction)(x...) = op.f.(x...)
+@inline (op::BroadcastFunction)(x...; kwargs...) = op.f.(x...; kwargs...)
 
 Base.show(io::IO, op::BroadcastFunction) = print(io, BroadcastFunction, '(', op.f, ')')
 Base.show(io::IO, ::MIME"text/plain", op::BroadcastFunction) = show(io, op)
