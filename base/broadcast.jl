@@ -1196,7 +1196,7 @@ function __dot__(x::Expr)
            Meta.isexpr(x.args[1], :call) # function or macro definition
         Expr(x.head, x.args[1], dotargs[2])
     elseif x.head === :(<:) || x.head === :(>:)
-        tmp = x.head === :(<:) ? :(.<:) : :(.>:)
+        tmp = x.head === :(<:) ? :.<: : :.>:
         Expr(:call, tmp, dotargs...)
     else
         if x.head === :&& || x.head === :||
