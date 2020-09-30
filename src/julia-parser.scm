@@ -2160,22 +2160,13 @@
 
 (define (parse-interpolate s)
   (let* ((p (ts:port s))
+         (parentheses? (eqv? (peek-char p) #\())
+         (ex (parse-atom s))
          (c (peek-char p)))
-    (cond ((identifier-start-char? c)
-           (let* ((t (require-token s))
-                  (c (peek-char p)))
-             (if (ends-interpolated-atom? c)
-                 (take-token s)
-                 (error (string "interpolated variable $" t " ends with invalid character \"" c "\"; use \"$(" t ")\" instead.")))))
-          ((eqv? c #\()
-           (read-char p)
-           (let ((ex (parse-eq* s))
-                 (t (require-token s)))
-             (cond ((eqv? t #\) )
-                    (take-token s)
-                    ex)
-                   (else (error "invalid interpolation syntax")))))
-          (else (error (string "invalid interpolation syntax: \"$" c "\""))))))
+    (if (or parentheses? (ends-interpolated-atom? c))
+        ex
+        (error (string "interpolated atom $" (deparse ex) " followed by invalid character \""
+                       c "\"; use \"$(" (deparse ex) ")\" instead.")))))
 
 ;; raw = raw string literal
 ;; when raw is #t, unescape only \\ and delimiter
