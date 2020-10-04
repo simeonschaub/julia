@@ -2311,17 +2311,17 @@ end
     res = begin x, y, z... = 1:7 end
     @test res == 1:7
     @test x == 1 && y == 2
-    @test z == Tuple(3:7)
+    @test z == Vector(3:7)
 
     res = begin x, y, z... = [1, 2] end
     @test res == [1, 2]
     @test x == 1 && y == 2
-    @test z == ()
+    @test z == Int[]
 
     x = 1
     res = begin x..., = x end
     @test res == 1
-    @test x == (1,)
+    @test x == 1
 
     x, y, z... = 1:7
     res = begin y, z, x... = z..., x, y end
@@ -2338,7 +2338,7 @@ end
     res = begin x, y... = 1 end
     @test res == 1
     @test x == 1
-    @test y == ()
+    @test y == Iterators.rest(1, nothing)
 
     res = begin x, y, z... = 1, 2, 3:5 end
     @test res == (1, 2, 3:5)
@@ -2355,5 +2355,5 @@ end
     car((a, d...)) = a
     cdr((a, d...)) = d
     @test car(1:3) == 1
-    @test cdr(1:3) == (2, 3)
+    @test cdr(1:3) == [2, 3]
 end
