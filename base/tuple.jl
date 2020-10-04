@@ -116,21 +116,15 @@ iterate_and_index(x) = (destruct_iterate, select_first)
 # to make inference's life easier.
 iterate_and_index(::Nothing) = throw(MethodError(iterate, (nothing,)))
 
-#slurp_rest(itr, _, i) = Tuple(Iterators.drop(itr, i - 1))
-slurp_rest(t::NTuple{N}, _, i) where {N} = ntuple(x -> getfield(t, x+i-1), N-i+1)
-slurp_rest(a::Array, _, i) = i > length(a) ? () : _slurp_rest(a, (a, i), i)
-slurp_rest(itr, nxt, i) = nxt isa BadDestructure ? () : _slurp_rest(itr, nxt, i)
-function _slurp_rest(itr, nxt, i)
+function _rest(itr, state, _)
     @_inline_meta
-    t = ()
-    while true
-        x, st = nxt
-        t = (t..., x)
-        nxt = iterate(itr, st)
-        nxt === nothing && break
-    end
-    return Base.haslength(itr) ? t::NTuple{length(itr)-i+1} : t
+    rest(itr, state...)
 end
+_rest(x::Union{Array,Tuple}, _, i) = (@_inline_meta; rest(x, i)
+
+rest(t::NTuple{N}, i::Int) where {N} = ntuple(x -> getfield(t, x+i-1), N-i+1)
+rest(a::Array, i::Int) = a[i:end]
+rest(itr, state) = Iterators.rest(itr, state)
 
 # Use dispatch to avoid a branch in first
 first(::Tuple{}) = throw(ArgumentError("tuple must be non-empty"))

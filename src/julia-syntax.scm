@@ -2070,6 +2070,13 @@
                                                     (cadr l) "\""))))
                                 ((eq? l x) #t)
                                 (else (in-lhs? x (cdr lhss)))))))
+                  (define (gensymified-assignment lhs rhs)
+                     (if (eventually-call? lhs)
+                         (let ((val (gensy)))
+                           `(block
+                             (= ,val ,rhs)
+                             (= ,lhs ,val)))
+                         `(= ,lhs ,rhs)))
                   (let* ((xx  (if (or (and (not (in-lhs? x lhss)) (symbol? x))
                                       (ssavalue? x))
                                   x (make-ssavalue)))
@@ -2085,21 +2092,20 @@
                         (list iterate index)
                         `(call (top iterate_and_index) ,xx))
                       ,.(map (lambda (i lhs)
-                              (let* ((assign-indexed-or-rest
-                                       (if (and (pair? lhs) (eq? (car lhs) '|...|))
-                                          `(= ,(cadr lhs) (call (top slurp_rest) ,xx ,st ,(+ i 1)))
-                                          `(= ,lhs (call ,index ,st ,(+ i 1)))))
-                                     (lhs (cadr assign-indexed-or-rest)))
-                                (expand-forms
-                                 `(block
-                                   (= ,st (call ,iterate
-                                       ,xx ,.(if (eq? i 0) '() `(,st))))
-                                  ,(if (eventually-call? lhs)
-                                     (let ((val (gensy)))
-                                       `(block
-                                         (= ,val ,(caddr assign-indexed-or-rest))
-                                         (= ,lhs ,val)))
-                                     assign-indexed-or-rest)))))
+                               (expand-forms
+                                 (if (and (pair? lhs) (eq? (car lhs) '|...|))
+                                     ,(gensymified-assignment
+                                        lhs
+                                        `(call (top _rest)
+                                               ,xx
+                                               ,(if (eq? i 0) '(tuple) `(tuple ,st))
+                                               ,(+ i 1)))
+                                     `(block
+                                       (= ,st (call ,iterate
+                                           ,xx ,.(if (eq? i 0) '() `(,st))))
+                                       ,(gensymified-assignment
+                                          lhs
+                                          (call ,index ,st ,(+ i 1)))))))
                              (iota n)
                              lhss)
                       (unnecessary ,xx)))))))
